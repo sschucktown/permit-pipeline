@@ -2,10 +2,10 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [ main ]
   pull_request:
-    branches: [main]
-  workflow_dispatch:
+    branches: [ main ]
+  workflow_dispatch:   # 👈 allows manual runs via CLI/UI
 
 jobs:
   build:
@@ -18,16 +18,20 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install pytest
+          pip install pytest requests beautifulsoup4
 
-      - name: Run pipeline
-        run: python -m permit_pipeline.main
+      - name: Run pipeline demo
+        run: |
+          export PYTHONPATH=src
+          python -m permit_pipeline.main
 
       - name: Run tests
-        run: pytest || echo "No tests yet"
+        run: |
+          export PYTHONPATH=src
+          pytest || echo "No tests yet"
