@@ -5,7 +5,7 @@ from .extractor import to_raw_payload
 from .parser import parse_fields
 from .normalizer import normalize
 from .dedupe import is_changed
-from .review_queue import route, ReviewItem
+from .review_queue import route
 from .db.models import PermitRecord
 from .db.repo import InMemoryRepo
 from .monitoring import log_event
@@ -36,7 +36,7 @@ def run_demo():
         return
 
     # --- 3. Parse ---
-    parsed = parse_fields(raw.text)
+    parsed = parse_fields(raw.text, raw_dict)
     log_event("parsed", fields=parsed.fields, confidence=parsed.confidence)
 
     # --- 4. Normalize ---
@@ -54,9 +54,9 @@ def run_demo():
             jurisdiction_id=jurisdiction_id,
             authority=authority,
             local_source_id=source_url,
-            permit_type=canonical["permit_type"],
-            trade_tags=canonical["trade_tags"],
-            fees=canonical["fees"],
+            permit_type=canonical.get("permit_type"),
+            trade_tags=canonical.get("trade_tags", []),
+            fees=canonical.get("fees", {}),
             submission_url=canonical.get("submission_url"),
             effective_date=canonical.get("effective_date"),
             change_hash=canonical["change_hash"],
@@ -84,6 +84,12 @@ def run_demo():
         print(f"effective_date: {rec.effective_date}")
         print(f"confidence: {rec.confidence_score}")
         print(f"change_hash: {rec.change_hash}")
+
+        # Show forms if present
+        if "forms" in rec.parsed_payload:
+            print("forms:")
+            for form in rec.parsed_payload["forms"]:
+                print(f"  - {form['name']}: {form['url']}")
 
 
 if __name__ == "__main__":
