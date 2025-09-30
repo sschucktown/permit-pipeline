@@ -2,18 +2,10 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
-  workflow_dispatch:   # 👈 add this to allow manual runs
-name: CI
-
-on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
-  workflow_dispatch:   # allows manual runs with gh workflow run
+    branches: [main]
+  workflow_dispatch:
 
 jobs:
   build:
