@@ -1,5 +1,5 @@
 from .config import CrawlConfig
-from .fetcher import MockFetcher
+from .fetcher import HttpFetcher
 from .adapters.energov import EnerGovAdapter
 from .extractor import to_raw_payload
 from .parser import parse_fields
@@ -11,28 +11,35 @@ from .db.repo import InMemoryRepo
 from .monitoring import log_event
 from .utils import gen_id
 
+
 def run_demo():
     cfg = CrawlConfig()
-    fetcher = MockFetcher()
+    fetcher = HttpFetcher()
     adapter = EnerGovAdapter()
     repo = InMemoryRepo()
 
+    # Charleston Applications & Guidelines page (EnerGov portal PDFs/forms)
     jurisdiction_id = "charleston-city"
-    source_url = "https://mock.charleston-sc.gov/permits/hvac"
+    source_url = "https://www.charleston-sc.gov/2483/Applications-Guidelines"
     authority = "City of Charleston"
 
+    # 1. Fetch
     result = fetcher.fetch(source_url)
     log_event("fetched", url=result.url, etag=result.headers.get("ETag"))
 
+    # 2. Adapt -> Raw
     raw_dict = adapter.extract_raw(result) if adapter.accepts(result) else None
     raw = to_raw_payload(raw_dict)
 
+    # 3. Parse
     parsed = parse_fields(raw.text)
     log_event("parsed", fields=parsed.fields, confidence=parsed.confidence)
 
+    # 4. Normalize
     canonical = normalize(parsed.fields, jurisdiction_id)
-    log_event("normalized", canonical=canonical)
+    log_event("normalized", canonical={"canonical": canonical})
 
+    # 5. Dedupe & Routing
     existing = repo.get_by_local_id(source_url)
     if not existing or is_changed(canonical["change_hash"], existing.change_hash):
         decision = route(parsed.confidence, cfg.autopublish_confidence, cfg.review_confidence)
@@ -52,7 +59,7 @@ def run_demo():
             raw_payload=raw_dict,
             parsed_payload=parsed.fields,
             confidence_score=parsed.confidence,
-            provenance={"headers": raw.headers}
+            provenance={"headers": raw.headers},
         )
 
         repo.upsert(record)
@@ -60,6 +67,7 @@ def run_demo():
     else:
         log_event("no_change", local_id=source_url)
 
+    # 6. Print stored permits
     for rec in repo.all():
         print("\n=== Canonical Permit Record ===")
         print(f"permit_id: {rec.permit_id}")
@@ -72,6 +80,7 @@ def run_demo():
         print(f"effective_date: {rec.effective_date}")
         print(f"confidence: {rec.confidence_score}")
         print(f"change_hash: {rec.change_hash}")
+
 
 if __name__ == "__main__":
     run_demo()
