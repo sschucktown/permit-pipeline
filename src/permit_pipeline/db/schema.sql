@@ -1,0 +1,1 @@
+-- Placeholder DDL; see conversation for full schema.
